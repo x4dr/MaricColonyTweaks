@@ -1,0 +1,9 @@
+{
+  "com.minecolonies.coremod.setting.mariccolonytweaks:use_bonemeal": "Use Bone Meal",
+  "mariccolonytweaks.delivery.workerchestfull": "I can't deliver because %s has a full worker chest.",
+  "mariccolonytweaks.student.graduated.slot": "§e[MaricColonyTweaks]§r %s finished studying and took the open %s job at %s.",
+  "mariccolonytweaks.student.graduated.swap": "§e[MaricColonyTweaks]§r %s finished studying and swapped jobs with %s; %s is now a Student.",
+  "mariccolonytweaks.research.requesting": "§e[MaricColonyTweaks]§r The university is requesting %s for the %s research. It will start once the items are delivered.",
+  "mariccolonytweaks.research.pending": "§e[MaricColonyTweaks]§r The university is still waiting on the %s research items; the research will start once they are delivered.",
+  "mariccolonytweaks.research.autostart": "§e[MaricColonyTweaks]§r All items for the %s research have been delivered and the research has been started."
+}

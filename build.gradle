@@ -1,0 +1,35 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '0.1.110'
+}
+
+version = '1.0.0'
+group = 'net.maric.colonytweaks'
+
+base {
+    archivesName = 'mariccolonytweaks'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+}
+
+neoForge {
+    version = '21.1.249'
+    mods {
+        mariccolonytweaks {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    compileOnly "org.spongepowered:mixin:0.8.7"
+    compileOnly files('libs/minecolonies-1.1.1368-1.21.1.jar', 'libs/blockui-1.0.212.jar')
+    compileOnly files('/home/maric/.gradle/caches/modules-2/files-2.1/io.github.llamalad7/mixinextras-common/0.3.5/5de895137aa0478675b6ecf7602d9652b05dc37e/mixinextras-common-0.3.5.jar')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

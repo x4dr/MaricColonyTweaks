@@ -1,0 +1,53 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="GPL-3.0"
+licenseUrl="https://www.gnu.org/licenses/gpl-3.0.txt"
+
+[[mods]]
+modId="mariccolonytweaks"
+version="1.0.0"
+displayName="MaricColonyTweaks"
+displayURL="https://github.com/x4dr/MaricColonyTweaks"
+issueTrackerURL="https://github.com/x4dr/MaricColonyTweaks/issues"
+authors="maric"
+description='''
+Nine small quality-of-life patches for MineColonies, each of which degrades to vanilla behaviour instead of crashing the game when a MineColonies update moves the code it targets.
+
+Builders:
+- Builder unstick: watchdog for the pathfinding loop where a builder retries the same block all day; forces it on to the placement step after a configurable stall.
+Couriers:
+- Courier full-chest logging: names the building and its coordinates when a delivery fails because a worker chest is full, and restores the building name that MineColonies' own message silently drops.
+Farmers:
+- Per-farmer-hut "Use Bone Meal" setting: a new farmer hut setting, stored and synced like every other hut setting.
+- Bone meal-free fertilizer requests: with that setting off, the farmer's fertilizer request asks for compost only, so external storage keeps its bone meal supply.
+Library:
+- Student graduation: when a Student reaches the happiness-based Intelligence study cap, hands the slot to someone who can still learn - into an open auto-hire slot, or by swapping with the lowest-Intelligence employed citizen. Guards and Undertakers are never involved.
+University:
+- Research item requests: clicking a research whose cost items sit outside the university chest creates colony requests for the missing items instead of failing with "cost not available".
+- Research auto-start: the queued research starts by itself once every cost item has been delivered, subject to the normal in-progress cap, and the pending research survives save/reload.
+- Clickable research cost tiles (client): research tiles whose cost is missing become clickable, and the in-progress cap no longer blocks the click, so the request path above is reachable from the research tree.
+'''
+
+[[mixins]]
+config="mariccolonytweaks.mixins.json"
+
+[[dependencies.mariccolonytweaks]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.0,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.mariccolonytweaks]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.22)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.mariccolonytweaks]]
+modId="minecolonies"
+type="required"
+versionRange="[1.1.1368,)"
+ordering="NONE"
+side="BOTH"

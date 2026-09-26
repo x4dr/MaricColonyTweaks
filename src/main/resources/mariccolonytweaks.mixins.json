@@ -1,0 +1,23 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "net.maric.colonytweaks.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "plugin": "net.maric.colonytweaks.mixin.ColonyTweaksMixinPlugin",
+  "mixins": [
+    "AbstractAISkeletonAccessor",
+    "BuilderUnstickMixin",
+    "CourierFullChestLogMixin",
+    "FarmerBonemealSettingMixin",
+    "FarmerBonemealRequestMixin",
+    "StudentGraduationMixin",
+    "UniversityResearchRequestMixin",
+    "BuildingUniversityResearchMixin"
+  ],
+  "client": [
+    "WindowResearchTreeRequestMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}
