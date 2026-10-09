@@ -24,7 +24,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(SettingsModule.class)
 public abstract class FarmerBonemealSettingMixin
 {
-    @Inject(method = "with", at = @At("RETURN"), require = 0)
+    @Inject(method = "with", at = @At("RETURN"))
     private void mariccolonytweaks$addBonemealSetting(final ISettingKey<?> key, final ISetting<?> setting,
                                               final CallbackInfoReturnable<ISettingsModule> cir)
     {

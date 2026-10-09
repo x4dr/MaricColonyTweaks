@@ -60,8 +60,8 @@ public abstract class WindowResearchTreeRequestMixin
     @Inject(
         method = "drawResearchItem",
         at = @At("RETURN"),
-        remap = false,
-        require = 0)
+        remap = false
+    )
     private void mariccolonytweaks$makeCostMissingTilesClickable(
         final ZoomDragView view,
         final int offsetX,
@@ -129,8 +129,8 @@ public abstract class WindowResearchTreeRequestMixin
         at = @At(
             value = "INVOKE",
             target = "Lcom/minecolonies/api/research/IGlobalResearch;hasEnoughResources(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/core/BlockPos;)Z"),
-        remap = false,
-        require = 0)
+        remap = false
+    )
     private boolean mariccolonytweaks$requestOnMissingCost(
         final IGlobalResearch research,
         final Player player,

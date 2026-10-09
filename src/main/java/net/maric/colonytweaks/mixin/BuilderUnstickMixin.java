@@ -60,7 +60,7 @@ public abstract class BuilderUnstickMixin
     @Unique
     private boolean mariccolonytweaks_hasPrev;
 
-    @Inject(method = "walkToConstructionSite", at = @At("RETURN"), cancellable = true, require = 0)
+    @Inject(method = "walkToConstructionSite", at = @At("RETURN"), cancellable = true)
     private void mariccolonytweaks$builderUnstick(final BlockPos currentBlock, final CallbackInfoReturnable<Boolean> cir)
     {
         if (cir.getReturnValueZ())

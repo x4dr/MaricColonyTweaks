@@ -5,5 +5,6 @@
   "mariccolonytweaks.student.graduated.swap": "§e[MaricColonyTweaks]§r %s finished studying and swapped jobs with %s; %s is now a Student.",
   "mariccolonytweaks.research.requesting": "§e[MaricColonyTweaks]§r The university is requesting %s for the %s research. It will start once the items are delivered.",
   "mariccolonytweaks.research.pending": "§e[MaricColonyTweaks]§r The university is still waiting on the %s research items; the research will start once they are delivered.",
-  "mariccolonytweaks.research.autostart": "§e[MaricColonyTweaks]§r All items for the %s research have been delivered and the research has been started."
+  "mariccolonytweaks.research.autostart": "§e[MaricColonyTweaks]§r All items for the %s research have been delivered and the research has been started.",
+  "mariccolonytweaks.research.cancelled": "§e[MaricColonyTweaks]§r The request for the %s research was cancelled; the university will not keep asking for its items."
 }

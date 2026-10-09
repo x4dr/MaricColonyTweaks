@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(WorkerBuildingModule.class)
 public abstract class StudentGraduationMixin
 {
-    @Inject(method = "onColonyTick", at = @At("RETURN"), require = 0)
+    @Inject(method = "onColonyTick", at = @At("RETURN"))
     private void mariccolonytweaks$graduateStudents(final IColony colony, final CallbackInfo ci)
     {
         StudentGraduation.onStudentModuleTick((WorkerBuildingModule) (Object) this, colony);

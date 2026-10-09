@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(BuildingUniversity.class)
 public abstract class BuildingUniversityResearchMixin
 {
-    @Inject(method = "onColonyTick", at = @At("RETURN"), require = 0)
+    @Inject(method = "onColonyTick", at = @At("RETURN"))
     private void mariccolonytweaks$checkPendingResearch(final IColony colony, final CallbackInfo ci)
     {
         UniversityResearch.onUniversityTick((BuildingUniversity) (Object) this, colony);
@@ -30,8 +30,8 @@ public abstract class BuildingUniversityResearchMixin
     @Inject(
         method = "serializeNBT(Lnet/minecraft/core/HolderLookup$Provider;)Lnet/minecraft/nbt/CompoundTag;",
         at = @At("RETURN"),
-        cancellable = true,
-        require = 0)
+        cancellable = true
+    )
     private void mariccolonytweaks$savePendingResearch(final HolderLookup.Provider provider, final CallbackInfoReturnable<CompoundTag> cir)
     {
         final CompoundTag tag = cir.getReturnValue();
@@ -41,8 +41,8 @@ public abstract class BuildingUniversityResearchMixin
 
     @Inject(
         method = "deserializeNBT(Lnet/minecraft/core/HolderLookup$Provider;Lnet/minecraft/nbt/CompoundTag;)V",
-        at = @At("RETURN"),
-        require = 0)
+        at = @At("RETURN")
+    )
     private void mariccolonytweaks$loadPendingResearch(final HolderLookup.Provider provider, final CompoundTag tag, final CallbackInfo ci)
     {
         UniversityResearch.readPending((BuildingUniversity) (Object) this, tag);

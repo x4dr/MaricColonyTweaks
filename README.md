@@ -1,6 +1,6 @@
 # MaricColonyTweaks
 
-Nine small quality-of-life patches for [MineColonies](https://www.minecolonies.com/), for
+Eleven small quality-of-life patches for [MineColonies](https://www.minecolonies.com/), for
 NeoForge 1.21.1.
 
 MineColonies is a moving target — the mod here is developed against snapshot builds, and a
@@ -22,69 +22,83 @@ behaviour. You always find out which, in chat, on join.
 | 6 | Library student graduation | `com.minecolonies.core.colony.buildings.modules.WorkerBuildingModule` | When a Student reaches the happiness-based Intelligence study cap (studying no longer raises it), the slot is handed to someone who can still learn: first an open auto-hire job slot in the colony, otherwise a job swap with the lowest-Intelligence employed citizen who is still under the cap. Guards and Undertakers are never taken over and never used as partners. |
 | 7 | University research item requests | `com.minecolonies.core.network.messages.server.colony.building.university.TryResearchMessage` | Vanilla only starts a research when the full cost is already in the university chest and the clicking player's inventory. With this on, a click with missing items instead creates colony requests for the missing amounts, so couriers fetch them from the Warehouse. |
 | 8 | University research auto-start | `com.minecolonies.core.colony.buildings.workerbuildings.BuildingUniversity` | Once every cost item has been delivered, the queued research starts by itself — subject to the normal in-progress cap (building level). The pending research is persisted in the university's building NBT, so it survives save/reload. |
-| 9 | Clickable research cost tiles (client) | `com.minecolonies.core.client.gui.WindowResearchTree` | Vanilla never makes a cost-missing research tile clickable, and the in-progress cap is a silent dead end in the click guard. This makes those tiles clickable and bypasses the cap check, so feature 7 is reachable from the research tree at all. |
+| 9 | Cancelling a research request | `com.minecolonies.core.colony.requestsystem.management.manager.StandardRequestManager` | Cancelling one of the item deliveries that feature 7 requested now cancels the research request itself, instead of the university re-raising the same delivery ~25 s later. The remaining deliveries for that research are cancelled with it, and the pending entry is dropped so it survives neither the tick nor a restart. |
+| 10 | Clickable research cost tiles (client) | `com.minecolonies.core.client.gui.WindowResearchTree` | Vanilla never makes a cost-missing research tile clickable, and the in-progress cap is a silent dead end in the click guard. This makes those tiles clickable and bypasses the cap check, so feature 7 is reachable from the research tree at all. |
+| 11 | Colonists are not jar-capturable | — | Adds `minecolonies:citizen` and `minecolonies:visitor` to the `c:capturing_not_supported` entity tag, which is what Ars Nouveau's Ritual of Containment checks. Without this a colonist that walks into the ritual is serialized to NBT and removed from the world with no death event, and MineColonies then spawns a duplicate on its 5 minute colony tick — the two copies fight over the same citizen slot. Data-only, see below. |
+
+Feature 11 is a **data-pack tag, not a mixin** — this mod ships
+`data/c/tags/entity_type/capturing_not_supported.json` in its own jar, which is all
+it takes, because a mod jar is scanned as a datapack. It therefore needs no entry
+in `compat/MixinFeature`, is not a mixin, cannot fail at boot, and is not counted in
+the boot or join report below. It is also not
+switchable: tags are resolved when datapacks load, so it cannot be toggled at
+runtime. It is harmless when Ars Nouveau is not installed — the tag is a common
+tag that other mods may also honour, and an unknown entity id in an additive tag
+is ignored.
 
 Features 1, 6, 7 and 8 are switchable from `config/mariccolonytweaks-common.toml`:
-`stuckMs`, `maxRetries`, `enableStudentSwaps`, `enableResearchRequests`. Setting 4 is per
-farmer hut and lives in the hut's own settings, not the config file.
+`stuckMs`, `maxRetries`, `enableStudentSwaps`, `enableResearchRequests`. Feature 9 rides on
+`enableResearchRequests`: with that off nothing is ever pending, so there is nothing to
+cancel. Setting 4 is per farmer hut and lives in the hut's own settings, not the config
+file.
 
-## The compatibility guard
+## What happens when MineColonies breaks a feature
 
 MineColonies ships snapshots that break mixins by renaming a method or changing a parameter
-type. The usual result is a crash on boot with a stack trace in `mixin apply failed`. This
-mod does not crash; it gives up on the affected feature instead.
+type. The usual result is a crash on boot with a stack trace in `mixin apply failed`. This mod
+does not crash; Mixin drops the affected mixin and the player is told.
 
-Three layers, deliberately:
+There is no compatibility code here, on purpose. Two settings in
+`mariccolonytweaks.mixins.json` do the whole job:
 
-1. **A hand-maintained feature table** (`compat/MixinFeature`) lists, for every feature, the
-   exact MineColonies class and members that feature depends on — methods with their full
-   parameter descriptors, fields with their type, foreign members such as the owner of an
-   `@At(INVOKE)` target, and constructor signatures.
-2. **A Mixin config plugin** (`mixin/ColonyTweaksMixinPlugin`) intercepts
-   `shouldApplyMixin` and asks the guard (`compat/MixinCompatibility`) whether those members
-   still exist, by reflection, *before* Mixin tries to apply anything. If a target is proven
-   missing, the mixin is skipped and that feature falls back to vanilla MineColonies
-   behaviour. Dependencies are resolved recursively, so a feature that calls into another
-   mixin's accessor is taken down together with it rather than linking against a member Mixin
-   never generated.
-3. **Fail-open everywhere else.** A feature is disabled only when its target is *proven*
-   missing. If the check itself cannot run — class not loadable yet, a field typed against a
-   mod that is not on the classpath, access denied — the mixin is applied anyway and the
-   reason is logged. `"required": false` in the mixin config, `injectors.defaultRequire: 0`,
-   and `require = 0` on every injection are the backstop underneath, so a bug in the guard
-   can never be the thing that breaks an otherwise working setup.
+| Setting | Value | What it does |
+|---------|-------|--------------|
+| `injectors.defaultRequire` | `1` | An injection whose target has moved **fails**, instead of silently becoming a no-op. |
+| `required` | `false` | That failure is a warning, not a boot abort. |
+
+So a moved target costs exactly one feature: Mixin throws `InvalidInjectionException`, discards
+the mixin whole rather than half-applying it, logs the target it was looking for, and the game
+carries on. `mixin/ColonyTweaksMixinPlugin` applies every mixin and does one thing — it notes
+which ones Mixin actually merged, so the report can name the ones that were dropped.
+
+`compat/AppliedFeatures` holds that difference; `compat/FeatureReport` turns it into words.
 
 ### What it logs
 
-* One line at boot naming the detected MineColonies version and how many features are in the
-  table.
-* One line per disabled feature at `ERROR`, naming the missing target with its full
-  descriptor, e.g.
-  `MaricColonyTweaks: incompatible with MineColonies 1.1.1392 - CourierFullChestLogMixin target not found (…EntityAIWorkDeliveryman#deliver()); feature 'courier full-chest logging' DISABLED.`
-* One summary line — `INFO` when everything is active, `WARN` when anything was disabled:
-  `MaricColonyTweaks: 9/9 features active on MineColonies 1.1.1392; disabled: none`.
-* A warning for anything that was *unverified* (see layer 3), which is the one case where
-  the guard goes quiet.
+* Mixin's own `WARN` per discarded mixin, naming the injection target that moved. That is the
+  diagnostic — it comes from Mixin, not from this mod, and it names the exact method.
+* One summary line at mod construction — `INFO` when everything loaded, `WARN` when anything did
+  not: `MaricColonyTweaks: 10/10 features active; not loaded: none`.
 
 ### What the player sees on join
 
-Fires once per login, server side (so singleplayer is covered too — the integrated server and
-the client share a JVM, and feature 9 is part of the same report).
+**Nothing, unless a feature failed to load.** A healthy mod is silent, so a message in chat
+always means something is wrong. When it does fire it is once per login, server side (so
+singleplayer is covered too — the integrated server and the client share a JVM, and the
+client-only feature is part of the same report):
 
-* All active — gold, one line in chat:
-  `[MaricColonyTweaks] Active - all 9 features enabled (MineColonies 1.1.1392-1.21.1-snapshot).`
-* Something disabled — a red headline in chat, one line per feature naming the missing
-  target, and a count of what is still active; plus an action-bar line
-  `MaricColonyTweaks 8/9 features active - see chat`.
+```
+[MaricColonyTweaks] 1 of 10 features did NOT load on this MineColonies version:
+ - courier full-chest logging
+9 still active. The missing ones fall back to vanilla MineColonies behaviour.
+See the log for the Mixin warnings naming the targets that moved.
+```
 
-Only features Mixin actually asked about are counted, so on a dedicated server feature 9 is
-not reported as active.
+plus an action-bar line `MaricColonyTweaks 9/10 features active - see chat`.
 
-> **The feature table is hand-maintained.** Nothing generates it and nothing checks it against
-> a MineColonies build. When you bump the MineColonies version and something is off, check
-> `MixinFeature` first: a target that changed name or shape has to be re-listed there before
-> the guard will see it as supported. A feature whose target moved is *not* detected on its
-> own — it is disabled because the stale entry no longer resolves.
+Only features Mixin actually asked about are counted, so on a dedicated server the client-only
+feature is not reported as active. Feature 11 is a data tag and is never counted, so the counts
+are the ten mixin features, not all eleven.
+
+> **Bumping MineColonies** needs nothing from you. If a target moved, the feature drops out of
+> the report by itself and Mixin's warning says which method to re-point. Only the *target name*
+> inside a mixin has to change, in that mixin — there is no second list to keep in step.
+
+> **One exception:** `AbstractAISkeletonAccessor` is a support mixin with no user-visible
+> behaviour, so it is not in the report, and `@Accessor` has no `require` attribute in the
+> shipped Mixin — a moved `worker` field produces no error at all.
+> `CourierFullChestLogMixin` guards its one use of that accessor with a `LinkageError` catch, so
+> the worst case is a log line without a name rather than a crash in the courier's delivery path.
 
 ## Building
 
@@ -111,18 +125,12 @@ and `build.gradle` expects them at these exact paths:
 Both are also already installed in a normal MineColonies game instance (`<instance>/.minecraft/mods`),
 if that is easier than hunting the releases page.
 
-### Known build issue
-
-`build.gradle` has one `compileOnly` line pinned to an absolute path in a local Gradle cache
-(`mixinextras-common-0.3.5.jar`). No source file uses MixinExtras, so the line is dead weight
-and it will fail the build on any machine that does not have that exact cache path — delete it,
-or replace it with a `compileOnly "io.github.llamalad7:mixinextras-common:0.3.5"` coordinate.
-
 ## Requirements
 
 * Minecraft 1.21.1
 * NeoForge 21.1.0 or newer (developed against 21.1.249)
-* MineColonies 1.1.1368 or newer (developed against 1.1.1392)
+* MineColonies 1.1.1368 or newer (the version in `libs/`, and the only one the build has been
+  checked against)
 
 ## Licence
 

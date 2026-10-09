@@ -44,11 +44,11 @@ public abstract class CourierFullChestLogMixin
         method = "deliver",
         at = @At(
             value = "INVOKE",
-            target = "Lcom/minecolonies/api/colony/buildings/IBuilding;getSchematicName()Ljava/lang/String;"),
-        require = 0)
+            target = "Lcom/minecolonies/api/colony/buildings/IBuilding;getSchematicName()Ljava/lang/String;")
+    )
     private String mariccolonytweaks$logFullChest(final IBuilding building)
     {
-        final AbstractEntityCitizen worker = ((AbstractAISkeletonAccessor) (Object) this).mariccolonytweaks$getWorker();
+        final AbstractEntityCitizen worker = workerOrNull();
         Log.getLogger().warn("[MaricColonyTweaks] {} can't deliver: worker chest full at {} '{}' ({})",
             worker != null ? worker.getName().getString() : "Courier",
             building.getID(),
@@ -63,8 +63,8 @@ public abstract class CourierFullChestLogMixin
         method = "deliver",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/network/chat/Component;translatableEscape(Ljava/lang/String;[Ljava/lang/Object;)Lnet/minecraft/network/chat/MutableComponent;"),
-        require = 0)
+            target = "Lnet/minecraft/network/chat/Component;translatableEscape(Ljava/lang/String;[Ljava/lang/Object;)Lnet/minecraft/network/chat/MutableComponent;")
+    )
     private MutableComponent mariccolonytweaks$fixChestFullMessage(final String key, final Object[] args)
     {
         if (!TranslationConstants.COM_MINECOLONIES_COREMOD_JOB_DELIVERYMAN_CHESTFULL.equals(key))
@@ -81,6 +81,29 @@ public abstract class CourierFullChestLogMixin
         final String at = mariccolonytweaks$lastPos.isEmpty() ? "" : " at " + mariccolonytweaks$lastPos;
         return Component.translatableEscape("mariccolonytweaks.delivery.workerchestfull",
             (mariccolonytweaks$lastName.isEmpty() ? fallbackName(args) : mariccolonytweaks$lastName) + at);
+    }
+
+    /**
+     * The worker, or null if {@link AbstractAISkeletonAccessor} did not generate.
+     *
+     * <p>That accessor is the one mixin that cannot fail loudly: {@code @Accessor} has no
+     * {@code require} attribute in the Mixin version NeoForge 21.1.249 ships, so a moved
+     * {@code worker} field produces no error and {@code mariccolonytweaks$getWorker} simply
+     * does not exist. Without this guard the log line below would throw
+     * {@link NoSuchMethodError} in the courier's delivery path, which is a crash rather than a
+     * missing log line - a worse outcome than losing the name from a debug log.
+     */
+    @Unique
+    private AbstractEntityCitizen workerOrNull()
+    {
+        try
+        {
+            return ((AbstractAISkeletonAccessor) (Object) this).mariccolonytweaks$getWorker();
+        }
+        catch (final LinkageError e)
+        {
+            return null;
+        }
     }
 
     @Unique

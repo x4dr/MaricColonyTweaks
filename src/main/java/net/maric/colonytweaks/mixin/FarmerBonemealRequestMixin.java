@@ -26,8 +26,7 @@ public abstract class FarmerBonemealRequestMixin
             value = "INVOKE",
             target = "Lcom/minecolonies/api/colony/requestsystem/requestable/StackList;<init>(Ljava/util/List;Ljava/lang/String;II)V"
         ),
-        index = 0,
-        require = 0
+        index = 0
     )
     private List<ItemStack> mariccolonytweaks$filterBonemeal(final List<ItemStack> stacks)
     {

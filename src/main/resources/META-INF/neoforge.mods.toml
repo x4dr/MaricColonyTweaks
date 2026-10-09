@@ -11,8 +11,7 @@ displayURL="https://github.com/x4dr/MaricColonyTweaks"
 issueTrackerURL="https://github.com/x4dr/MaricColonyTweaks/issues"
 authors="maric"
 description='''
-Nine small quality-of-life patches for MineColonies, each of which degrades to vanilla behaviour instead of crashing the game when a MineColonies update moves the code it targets.
-
+Eleven small quality-of-life patches for MineColonies, each of which degrades to vanilla behaviour instead of crashing the game when a MineColonies update moves the code it targets.
 Builders:
 - Builder unstick: watchdog for the pathfinding loop where a builder retries the same block all day; forces it on to the placement step after a configurable stall.
 Couriers:
@@ -25,7 +24,10 @@ Library:
 University:
 - Research item requests: clicking a research whose cost items sit outside the university chest creates colony requests for the missing items instead of failing with "cost not available".
 - Research auto-start: the queued research starts by itself once every cost item has been delivered, subject to the normal in-progress cap, and the pending research survives save/reload.
+- Cancelling a research request: cancelling one of the requested item deliveries cancels the research request itself, instead of the university re-raising the same delivery a moment later.
 - Clickable research cost tiles (client): research tiles whose cost is missing become clickable, and the in-progress cap no longer blocks the click, so the request path above is reachable from the research tree.
+Colonists:
+- Jar-proof colonists: colonists and visitors are added to the c:capturing_not_supported entity tag, so Ars Nouveau's Ritual of Containment cannot remove them from the world and leave MineColonies to spawn a duplicate that fights over the same citizen slot.
 '''
 
 [[mixins]]

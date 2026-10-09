@@ -40,8 +40,8 @@ public abstract class UniversityResearchRequestMixin
         method = "onExecute(Lnet/neoforged/neoforge/network/handling/IPayloadContext;Lnet/minecraft/server/level/ServerPlayer;Lcom/minecolonies/api/colony/IColony;Lcom/minecolonies/core/colony/buildings/workerbuildings/BuildingUniversity;)V",
         at = @At("HEAD"),
         cancellable = true,
-        remap = false,
-        require = 0)
+        remap = false
+    )
     private void mariccolonytweaks$requestMissingItems(
         final IPayloadContext ctx,
         final ServerPlayer player,

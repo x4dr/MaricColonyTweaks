@@ -4,7 +4,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.reflect.TypeToken;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
+import com.minecolonies.api.colony.requestsystem.request.RequestState;
 import com.minecolonies.api.colony.requestsystem.requestable.Stack;
+import com.minecolonies.api.colony.requestsystem.token.IToken;
+import com.minecolonies.api.colony.requestsystem.token.StandardToken;
 import com.minecolonies.api.research.IGlobalResearch;
 import com.minecolonies.api.research.IGlobalResearchTree;
 import com.minecolonies.api.research.ILocalResearchTree;
@@ -14,6 +17,10 @@ import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingUniversity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,9 +36,11 @@ import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * University research item requests.
@@ -49,7 +58,29 @@ public final class UniversityResearch
      * Per-university pending research, keyed by "colonyId:x,y,z". Survives restarts via
      * the building NBT hooks in {@code BuildingUniversityResearchMixin}.
      */
-    private static final Map<String, ResourceLocation[]> PENDING = new HashMap<>();
+    private static final Map<String, Pending> PENDING = new HashMap<>();
+
+    /**
+     * A research that has been requested but not started yet, plus the colony item
+     * requests standing in for its missing cost.
+     *
+     * <p>The tokens are what makes cancel possible. They are stored as identifier strings
+     * because a {@code StandardToken} is just a UUID, and a pending research is matched
+     * against a cancelled request by token rather than by cost item - so a request the
+     * player made themselves for the same item is never mistaken for ours.
+     */
+    private static final class Pending
+    {
+        private final ResourceLocation branch;
+        private final ResourceLocation researchId;
+        private final Set<String> tokens = new LinkedHashSet<>();
+
+        private Pending(final ResourceLocation branch, final ResourceLocation researchId)
+        {
+            this.branch = branch;
+            this.researchId = researchId;
+        }
+    }
 
     private UniversityResearch()
     {
@@ -64,9 +95,10 @@ public final class UniversityResearch
     {
         final List<Integer> missing = computeMissing(building, player, research);
         final List<String> requestedNames = new ArrayList<>();
-        boolean created = requestMissing(building, research, missing, requestedNames);
+        final Pending pending = new Pending(research.getBranch(), research.getId());
+        final boolean created = requestMissing(building, research, missing, requestedNames, pending.tokens);
 
-        PENDING.put(key(colony, building), new ResourceLocation[] {research.getBranch(), research.getId()});
+        PENDING.put(key(colony, building), pending);
 
         if (created)
         {
@@ -96,13 +128,13 @@ public final class UniversityResearch
         }
 
         final String key = key(colony, building);
-        final ResourceLocation[] pending = PENDING.get(key);
+        final Pending pending = PENDING.get(key);
         if (pending == null)
         {
             return;
         }
 
-        final IGlobalResearch research = IGlobalResearchTree.getInstance().getResearch(pending[0], pending[1]);
+        final IGlobalResearch research = IGlobalResearchTree.getInstance().getResearch(pending.branch, pending.researchId);
         if (research == null)
         {
             PENDING.remove(key);
@@ -110,7 +142,7 @@ public final class UniversityResearch
         }
 
         final ILocalResearchTree tree = colony.getResearchManager().getResearchTree();
-        if (tree.getResearch(pending[0], pending[1]) != null)
+        if (tree.getResearch(pending.branch, pending.researchId) != null)
         {
             // Started some other way (e.g. a later click with items present) - drop the marker.
             PENDING.remove(key);
@@ -125,7 +157,7 @@ public final class UniversityResearch
         }
 
         final List<Integer> missing = computeMissing(building, null, research);
-        MaricColonyTweaks.LOGGER.info("JBLOG autostart check {}: missing={} costCount={}",
+        MaricColonyTweaks.LOGGER.info("MCTLOG autostart check {}: missing={} costCount={}",
             research.getId(), missing, research.getCostList().size());
         if (missing.stream().noneMatch(m -> m > 0))
         {
@@ -139,18 +171,103 @@ public final class UniversityResearch
         }
         else
         {
-            requestMissing(building, research, missing, null);
+            requestMissing(building, research, missing, null, pending.tokens);
         }
+    }
+
+    /**
+     * Cancels a requested research, reached when its item delivery is cancelled by the player.
+     *
+     * <p>Without this the request the mod raised is re-created by the next
+     * {@link #onUniversityTick} about 25 s later, because the tick re-arms any cost item that
+     * is still missing, so cancelling a delivery appears to do nothing. Cancelling any one of
+     * the pending research's own requests means "stop requesting this research", so the
+     * whole pending entry goes: the marker first (so the re-entrant cancellations below are
+     * no-ops), then the remaining delivery requests.
+     */
+    public static void onRequestCancelled(final IColony colony, final IToken<?> token)
+    {
+        final String cancelled = tokenId(token);
+        if (cancelled == null)
+        {
+            return;
+        }
+
+        String matchedKey = null;
+        Pending matched = null;
+        for (final Map.Entry<String, Pending> entry : PENDING.entrySet())
+        {
+            if (entry.getValue().tokens.contains(cancelled))
+            {
+                matchedKey = entry.getKey();
+                matched = entry.getValue();
+                break;
+            }
+        }
+
+        if (matched == null)
+        {
+            return;
+        }
+
+        // Marker first, so the cancellations below re-enter harmlessly and the university
+        // tick cannot re-arm the research while we tear it down.
+        PENDING.remove(matchedKey);
+
+        for (final String other : matched.tokens)
+        {
+            if (other.equals(cancelled))
+            {
+                continue;
+            }
+
+            try
+            {
+                colony.getRequestManager().updateRequestState(new StandardToken(UUID.fromString(other)), RequestState.CANCELLED);
+            }
+            catch (final IllegalArgumentException e)
+            {
+                // Token no longer known to the manager, or no longer valid after a restart.
+                MaricColonyTweaks.LOGGER.debug("MaricColonyTweaks: could not cancel leftover research request {}", other, e);
+            }
+        }
+
+        final IGlobalResearch research = IGlobalResearchTree.getInstance().getResearch(matched.branch, matched.researchId);
+        final Component name = research == null
+            ? Component.literal(matched.researchId.toString())
+            : MutableComponent.create(research.getName());
+
+        MessageUtils.format("mariccolonytweaks.research.cancelled", name)
+            .sendTo(colony)
+            .forAllPlayers();
+        MaricColonyTweaks.LOGGER.info("[MaricColonyTweaks] pending research request cancelled: {}", matched.researchId);
+    }
+
+    private static String tokenId(final IToken<?> token)
+    {
+        if (token == null)
+        {
+            return null;
+        }
+
+        return String.valueOf(token.getIdentifier());
     }
 
     public static void writePending(final BuildingUniversity building, final CompoundTag tag)
     {
-        final ResourceLocation[] pending = PENDING.get(persistKey(building));
+        final Pending pending = PENDING.get(persistKey(building));
         if (pending != null)
         {
             final CompoundTag data = new CompoundTag();
-            data.putString("branch", pending[0].toString());
-            data.putString("research", pending[1].toString());
+            data.putString("branch", pending.branch.toString());
+            data.putString("research", pending.researchId.toString());
+            final ListTag tokens = new ListTag();
+            for (final String token : pending.tokens)
+            {
+                tokens.add(StringTag.valueOf(token));
+            }
+
+            data.put("tokens", tokens);
             tag.put("mariccolonytweaksPendingResearch", data);
         }
     }
@@ -160,10 +277,17 @@ public final class UniversityResearch
         if (tag.contains("mariccolonytweaksPendingResearch"))
         {
             final CompoundTag data = tag.getCompound("mariccolonytweaksPendingResearch");
-            PENDING.put(persistKey(building), new ResourceLocation[] {
+            final Pending pending = new Pending(
                 ResourceLocation.parse(data.getString("branch")),
-                ResourceLocation.parse(data.getString("research"))
-            });
+                ResourceLocation.parse(data.getString("research")));
+
+            final ListTag tokens = data.getList("tokens", Tag.TAG_STRING);
+            for (int i = 0; i < tokens.size(); i++)
+            {
+                pending.tokens.add(tokens.getString(i));
+            }
+
+            PENDING.put(persistKey(building), pending);
         }
     }
 
@@ -209,7 +333,7 @@ public final class UniversityResearch
      * Creates one building-level request per missing item that has no open request yet.
      * Appends "count x display name" entries to {@code requestedNames} when non-null.
      */
-    private static boolean requestMissing(final BuildingUniversity building, final IGlobalResearch research, final List<Integer> missing, final List<String> requestedNames)
+    private static boolean requestMissing(final BuildingUniversity building, final IGlobalResearch research, final List<Integer> missing, final List<String> requestedNames, final Set<String> outTokens)
     {
         final List<SizedIngredient> costList = research.getCostList();
         final Set<com.minecolonies.api.crafting.ItemStorage> openRequests = new HashSet<>();
@@ -243,6 +367,15 @@ public final class UniversityResearch
             // postbox "exact quantity" mode. min=1 lets the resolver complete the
             // request after delivering a single item and the rest never arrives.
             final var token = building.createRequest(new Stack(representative, missingCount, missingCount), false);
+            if (outTokens != null)
+            {
+                final String id = tokenId(token);
+                if (id != null)
+                {
+                    outTokens.add(id);
+                }
+            }
+
             MaricColonyTweaks.LOGGER.info("[MaricColonyTweaks] research request created: {} x{} for {}",
                 representative.getHoverName().getString(), missingCount, research.getId());
             created = true;

@@ -3,7 +3,6 @@ package net.maric.colonytweaks;
 import com.minecolonies.core.colony.buildings.modules.settings.BoolSetting;
 import com.minecolonies.core.colony.buildings.modules.settings.SettingKey;
 import net.maric.colonytweaks.compat.CompatibilityNotifier;
-import net.maric.colonytweaks.compat.MixinCompatibility;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -65,6 +64,6 @@ public final class MaricColonyTweaks
         // Player events live on the game bus, not the mod bus, so this is the server-side
         // (and therefore singleplayer-safe) place to report the mixin compatibility result.
         NeoForge.EVENT_BUS.addListener(CompatibilityNotifier::onPlayerLoggedIn);
-        MixinCompatibility.logSummary();
+        CompatibilityNotifier.logSummary();
     }
 }

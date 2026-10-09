@@ -12,12 +12,13 @@
     "FarmerBonemealRequestMixin",
     "StudentGraduationMixin",
     "UniversityResearchRequestMixin",
+    "ResearchRequestCancelMixin",
     "BuildingUniversityResearchMixin"
   ],
   "client": [
     "WindowResearchTreeRequestMixin"
   ],
   "injectors": {
-    "defaultRequire": 0
+    "defaultRequire": 1
   }
 }

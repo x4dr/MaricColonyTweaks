@@ -6,6 +6,8 @@ plugins {
 version = '1.0.0'
 group = 'net.maric.colonytweaks'
 
+ext.neoForgeVersion = '21.1.249'
+
 base {
     archivesName = 'mariccolonytweaks'
 }
@@ -16,7 +18,7 @@ repositories {
 }
 
 neoForge {
-    version = '21.1.249'
+    version = project.neoForgeVersion
     mods {
         mariccolonytweaks {
             sourceSet sourceSets.main
@@ -27,7 +29,26 @@ neoForge {
 dependencies {
     compileOnly "org.spongepowered:mixin:0.8.7"
     compileOnly files('libs/minecolonies-1.1.1368-1.21.1.jar', 'libs/blockui-1.0.212.jar')
-    compileOnly files('/home/maric/.gradle/caches/modules-2/files-2.1/io.github.llamalad7/mixinextras-common/0.3.5/5de895137aa0478675b6ecf7602d9652b05dc37e/mixinextras-common-0.3.5.jar')
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+
+    // MixinConfigNames reads the real mariccolonytweaks.mixins.json off the test classpath.
+    testImplementation sourceSets.main.output
+
+    // AppliedFeatures logs through com.mojang.logging, which is on the mod's compile classpath
+    // via NeoForge, but the tests resolve it at runtime.
+    testImplementation "com.mojang:logging:1.2.7"
+    testImplementation "org.slf4j:slf4j-api:2.0.9"
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'failed', 'skipped'
+        exceptionFormat = 'full'
+        showStandardStreams = false
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
