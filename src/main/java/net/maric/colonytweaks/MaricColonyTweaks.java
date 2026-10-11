@@ -64,6 +64,7 @@ public final class MaricColonyTweaks
         // Player events live on the game bus, not the mod bus, so this is the server-side
         // (and therefore singleplayer-safe) place to report the mixin compatibility result.
         NeoForge.EVENT_BUS.addListener(CompatibilityNotifier::onPlayerLoggedIn);
+        NeoForge.EVENT_BUS.addListener(CompatibilityNotifier::onServerTick);
         CompatibilityNotifier.logSummary();
     }
 }

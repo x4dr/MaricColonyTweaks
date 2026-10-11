@@ -75,7 +75,10 @@ public class ColonyTweaksMixinPlugin implements IMixinConfigPlugin
     public void preApply(
         final String targetClassName, final ClassNode targetClass, final String mixinClassName, final IMixinInfo mixinInfo)
     {
-        // No bytecode rewriting: MaricColonyTweaks only reports, it does not synthesise.
+        // Reached once the target class has loaded, before any injection runs. Reaching this and
+        // never postApply is how a moved injection target is told apart from a class that has not
+        // loaded yet.
+        AppliedFeatures.recordPreApply(mixinClassName);
     }
 
     @Override

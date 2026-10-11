@@ -6,7 +6,7 @@ plugins {
 version = '1.0.0'
 group = 'net.maric.colonytweaks'
 
-ext.neoForgeVersion = '21.1.249'
+ext.neoForgeVersion = '21.1.252'
 
 base {
     archivesName = 'mariccolonytweaks'
@@ -28,7 +28,7 @@ neoForge {
 
 dependencies {
     compileOnly "org.spongepowered:mixin:0.8.7"
-    compileOnly files('libs/minecolonies-1.1.1368-1.21.1.jar', 'libs/blockui-1.0.212.jar')
+    compileOnly files('libs/minecolonies-1.1.1392-1.21.1-snapshot.jar', 'libs/blockui-1.0.212.jar')
 
     testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"

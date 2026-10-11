@@ -19,13 +19,24 @@ import java.util.concurrent.ConcurrentHashMap;
  * config's own {@code "required": false} is what keeps that from taking the game down: Mixin
  * downgrades the failure to a warning and carries on booting.
  *
- * <p>So a feature that was attempted but never applied is one that does not work, and the
- * difference between the two sets is exactly the set to tell the player about. Nothing here
- * inspects MineColonies bytecode, which is the point: an earlier version pre-checked every
- * target member and had to work around Mixin refusing any mixin whose target got loaded during
- * config prepare. Letting Mixin fail the injection removes the need for that workaround.
+ * <p>What this class tracks is the difference between the three callbacks, which together
+ * separate "not visited yet" from "genuinely broke":
  *
- * <p>Written from Mixin's transformer thread and read from the server thread, so both sets are
+ * <ul>
+ *   <li>{@code shouldApplyMixin} fires once, at config prepare, for every mixin in the config,
+ *       whether or not its target class ever loads - that is {@link #ATTEMPTED}.</li>
+ *   <li>{@code preApply} fires when the target class <em>has</em> loaded and Mixin is about to
+ *       merge the mixin into it - that is {@link #PRE_APPLIED}.</li>
+ *   <li>{@code postApply} fires only if every injection merged - that is {@link #APPLIED}.</li>
+ * </ul>
+ *
+ * <p>So a feature that was attempted but never reached {@code preApply} has a target class that
+ * has not loaded yet - it is pending, and nothing is known about its compatibility. A feature
+ * that reached {@code preApply} but never {@code postApply} loaded its target and failed to
+ * apply: that is the compatibility failure this mod exists to report, and Mixin has already
+ * logged the injection target it wanted.
+ *
+ * <p>Written from Mixin's transformer thread and read from the server thread, so every set is
  * concurrent.
  */
 public final class AppliedFeatures
@@ -33,6 +44,7 @@ public final class AppliedFeatures
     public static final Logger LOGGER = LogUtils.getLogger();
 
     private static final Set<MixinFeature> ATTEMPTED = ConcurrentHashMap.newKeySet();
+    private static final Set<MixinFeature> PRE_APPLIED = ConcurrentHashMap.newKeySet();
     private static final Set<MixinFeature> APPLIED = ConcurrentHashMap.newKeySet();
 
     private AppliedFeatures()
@@ -51,6 +63,20 @@ public final class AppliedFeatures
         }
 
         ATTEMPTED.add(feature);
+    }
+
+    /**
+     * Called from {@code preApply}: the target class has loaded and Mixin is applying this mixin
+     * to it. Reaching here and never reaching {@link #recordApplied} is a failure, not a pending
+     * feature.
+     */
+    public static void recordPreApply(final String mixinClassName)
+    {
+        final MixinFeature feature = MixinFeature.byMixinClassName(simpleName(mixinClassName));
+        if (feature != null)
+        {
+            PRE_APPLIED.add(feature);
+        }
     }
 
     /** Called from {@code postApply}: this mixin was merged into its target. */
@@ -73,21 +99,50 @@ public final class AppliedFeatures
     }
 
     /**
-     * Features that do not work: Mixin tried to apply the mixin and discarded it, because an
-     * injection target had moved. Each falls back to vanilla MineColonies behaviour.
+     * Features whose target class has not loaded yet.
+     *
+     * <p>Mixin merges a mixin the first time its target class is loaded, and MineColonies loads
+     * many classes lazily - an AI worker's class loads when that citizen first ticks, a GUI class
+     * when the screen opens. So between mod construction and that first load, a feature is
+     * neither active nor broken: it is unverified. Claiming anything about it would be a guess.
+     *
+     * <p>The set shrinks as {@code preApply} fires; it is not an error report.
      */
-    public static List<MixinFeature> brokenFeatures()
+    public static List<MixinFeature> pendingFeatures()
     {
-        final EnumSet<MixinFeature> broken = EnumSet.noneOf(MixinFeature.class);
+        final EnumSet<MixinFeature> pending = EnumSet.noneOf(MixinFeature.class);
         for (final MixinFeature feature : ATTEMPTED)
         {
-            if (!APPLIED.contains(feature))
+            if (!PRE_APPLIED.contains(feature))
             {
-                broken.add(feature);
+                pending.add(feature);
             }
         }
 
-        return list(broken);
+        return list(pending);
+    }
+
+    /**
+     * Features whose target class loaded and whose mixin then failed to apply.
+     *
+     * <p>{@code preApply} fired, so Mixin reached the target class; {@code postApply} did not, so
+     * an injection threw and Mixin discarded the mixin whole (the config is {@code required:
+     * false}, which is why the game kept booting). This is the compatibility failure: the feature
+     * does not work on this MineColonies build, and Mixin's own warning names the target it
+     * wanted.
+     */
+    public static List<MixinFeature> failedFeatures()
+    {
+        final EnumSet<MixinFeature> failed = EnumSet.noneOf(MixinFeature.class);
+        for (final MixinFeature feature : PRE_APPLIED)
+        {
+            if (!APPLIED.contains(feature))
+            {
+                failed.add(feature);
+            }
+        }
+
+        return list(failed);
     }
 
     /** How many features to divide into working and broken. Zero before Mixin has run. */

@@ -50,6 +50,6 @@ side="BOTH"
 [[dependencies.mariccolonytweaks]]
 modId="minecolonies"
 type="required"
-versionRange="[1.1.1368,)"
+versionRange="[1.1.1392,)"
 ordering="NONE"
 side="BOTH"

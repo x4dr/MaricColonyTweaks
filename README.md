@@ -67,24 +67,29 @@ which ones Mixin actually merged, so the report can name the ones that were drop
 
 * Mixin's own `WARN` per discarded mixin, naming the injection target that moved. That is the
   diagnostic — it comes from Mixin, not from this mod, and it names the exact method.
-* One summary line at mod construction — `INFO` when everything loaded, `WARN` when anything did
-  not: `MaricColonyTweaks: 10/10 features active; not loaded: none`.
+* One summary line at mod construction, always `INFO` (pending is normal, not a problem):
+  `MaricColonyTweaks: 4/10 features verified; 6 pending until their MineColonies class first loads`.
+
+Pending is not broken. Mixin merges a mixin the first time its target class loads, and
+MineColonies loads most of them lazily — a builder AI class loads when a builder first ticks,
+a GUI class when the screen opens. So at mod construction the count of verified features is
+low by design, and the only way a feature can be reported broken is Mixin's own warning above.
 
 ### What the player sees on join
 
-**Nothing, unless a feature failed to load.** A healthy mod is silent, so a message in chat
-always means something is wrong. When it does fire it is once per login, server side (so
-singleplayer is covered too — the integrated server and the client share a JVM, and the
-client-only feature is part of the same report):
+The once-per-login, server-side summary (singleplayer covered too — the integrated server and
+the client share a JVM, and the client-only feature is part of the same report):
 
 ```
-[MaricColonyTweaks] 1 of 10 features did NOT load on this MineColonies version:
+[MaricColonyTweaks] 5 of 10 features verified on this MineColonies version:
+ - builder unstick
  - courier full-chest logging
-9 still active. The missing ones fall back to vanilla MineColonies behaviour.
-See the log for the Mixin warnings naming the targets that moved.
+ - clickable cost-missing research tiles
+The rest are pending: they are verified the first time their MineColonies class loads,
+which for AI and GUI features may be well into play.
 ```
 
-plus an action-bar line `MaricColonyTweaks 9/10 features active - see chat`.
+plus an action-bar line `MaricColonyTweaks 5/10 features verified - see chat`.
 
 Only features Mixin actually asked about are counted, so on a dedicated server the client-only
 feature is not reported as active. Feature 11 is a data tag and is never counted, so the counts
@@ -113,13 +118,13 @@ a different one.
 
 ### Compile-time dependencies
 
-`libs/` is **not** in git — `minecolonies-1.1.1368-1.21.1.jar` alone is ~78 MB. Both jars are
+`libs/` is **not** in git — `minecolonies-1.1.1392-1.21.1-snapshot.jar` alone is ~78 MB. Both jars are
 `compileOnly` (MineColonies and BlockUI are provided at runtime by the game, never shipped),
 and `build.gradle` expects them at these exact paths:
 
 | Path | Where to get it |
 |------|-----------------|
-| `libs/minecolonies-1.1.1368-1.21.1.jar` | [MineColonies 1.1.1368 for 1.21.1](https://github.com/Minecolonies/minecolonies/releases) — the version the mod is developed against. Any later 1.1.x should compile; the filename in `build.gradle` must match the file you put there. |
+| `libs/minecolonies-1.1.1392-1.21.1-snapshot.jar` | MineColonies `1.1.1392-1.21.1-snapshot` — the version the mod is developed and tested against. The filename in `build.gradle` must match the file you put there. |
 | `libs/blockui-1.0.212.jar` | [BlockUI](https://github.com/LDTTeam/BlockUI/releases) — MineColonies' UI library, needed because feature 9 patches a BlockUI-typed method signature. |
 
 Both are also already installed in a normal MineColonies game instance (`<instance>/.minecraft/mods`),
@@ -128,10 +133,11 @@ if that is easier than hunting the releases page.
 ## Requirements
 
 * Minecraft 1.21.1
-* NeoForge 21.1.0 or newer (developed against 21.1.249)
-* MineColonies 1.1.1368 or newer (the version in `libs/`, and the only one the build has been
+* NeoForge 21.1.0 or newer (developed against 21.1.252)
+* MineColonies 1.1.1392 or newer (the version in `libs/`, and the only one the build has been
   checked against)
 
 ## Licence
 
-GPL-3.0 — see [LICENSE](LICENSE).
+GPL-3.0 — see [LICENSE](LICENSE). The mod bundles no third-party code or assets;
+MineColonies and BlockUI are compile-time-only references.
